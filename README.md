@@ -1,207 +1,262 @@
-# Demo link https://drive.google.com/file/d/1uPOGWS0KHF8WKkJbIBP8YtsYHvsJmWSC/view?usp=sharing
-# FlashBack Labs Hackathon Submission
+# FlashBack Labs – Secure OTP Login + Selfie Upload (Hackathon Submission)
 
-## 🎯 Project Overview
+**Tech:** React Native (Expo) + TypeScript
 
-**Project Name**: FlashBack Labs - Secure Authentication System  
-**Team**: Solo Developer  
-**Duration**: 9 hours (10:30 AM - 7:30 PM IST)  
-**Technology**: React Native + Expo + TypeScript  
+---
 
-## ✅ Completed Requirements
+## 📽️ Demo & APK
 
-### 1. Phone & OTP Flow ✅
-- [x] E.164 format phone number input with validation
-- [x] "Send OTP" button with API integration
-- [x] Success/error status display
-- [x] 6-digit OTP input screen
-- [x] Verify button with API integration
-- [x] Comprehensive error handling (invalid/expired OTP)
-- [x] Button state management to prevent resubmission
+* **Demo video (60–90s):** [https://drive.google.com/file/d/1uPOGWS0KHF8WKkJbIBP8YtsYHvsJmWSC/view?usp=sharing](https://drive.google.com/file/d/1uPOGWS0KHF8WKkJbIBP8YtsYHvsJmWSC/view?usp=sharing)
+* **APK (tested on Android 15):** [https://drive.google.com/file/d/1QhB-OphZUEETD6E1hkDKENPTP52gK\_RS/view?usp=sharing](https://drive.google.com/file/d/1QhB-OphZUEETD6E1hkDKENPTP52gK_RS/view?usp=sharing)
 
+> The APK was tested on a physical device running **Android 15**. If you face install/network issues, see **Troubleshooting** below.
 
-### 3. Selfie Capture & Upload ✅
-- [x] Selfie capture only after liveness verification
-- [x] High-quality image capture
-- [x] Upload to backend API with liveness data
-- [x] Progress tracking during upload
-- [x] Error handling and retry mechanism
+---
 
-### 4. Error Handling & Feedback ✅
-- [x] User-friendly error messages
-- [x] API failure handling
-- [x] Camera/liveness failure handling
-- [x] Input validation
-- [x] Clear liveness instructions
-- [x] Loading states and progress indicators
+## ✅ What’s Implemented
 
-### 5. Navigation to Home ✅
-- [x] Welcome message
-- [x] User phone number display
-- [x] Uploaded selfie display
-- [x] Authentication status
-- [x] Logout functionality
+### 1) Phone & OTP Flow
 
-## 🔧 Technical Implementation
+* E.164 phone input validation (`+91XXXXXXXXXX`)
+* **Send OTP** → calls backend with proper headers & cookie
+* **OTP Verify** (6 digits) → handles success / invalid / expired OTP
+* Button/loader states and retry logic; error toasts/messages
 
-### Liveness Detection Algorithm
-```typescript
-// Enhanced face-based liveness detection
-- Blink Detection: Eye closure probability < 0.2, duration: 500ms
-- Head Turn Left: Yaw angle < -20°, duration: 1000ms  
-- Head Turn Right: Yaw angle > 20°, duration: 1000ms
-- Nod Detection: Roll angle variance > 2.0, duration: 800ms
-- Smile Detection: Smiling probability > 0.6, duration: 1000ms
+### 2) Selfie Capture & Upload
+
+* Front camera only; no gallery import
+* Preview before upload
+* Uploads **multipart/form-data** (`image` file + `username`) to backend
+* Shows progress and clear errors
+
+### 3) Post‑Login Home
+
+* Welcome message
+* Shows verified phone number
+* Renders the uploaded selfie
+* Logout/Reset flow
+
+### 4) Non‑Functional
+
+* No paid/proprietary SDKs
+* Clean separation of UI ↔ logic ↔ API clients
+* Proper validation & error handling
+* Smooth transitions; responsive across common screen sizes
+* No secrets committed; environment variables via `.env`
+
+---
+
+## 🧭 App Flow
+
+1. **Enter Phone** → tap **Send OTP**
+2. **Enter OTP (6‑digit)** → tap **Verify**
+3. **Capture Selfie** → confirm → **Upload**
+4. **Home** → displays welcome text, number, and uploaded selfie
+
+---
+
+## 🧪 Backend API (as provided)
+
+> **Base URL:** `https://flashback.inc:9000`
+
+### Send OTP
+
+```
+POST /api/mobile/sendOTP
+Headers:
+  Content-Type: application/json
+  Cookie: refreshToken=<provided>
+Body:
+{
+  "phoneNumber": "+91XXXXXXXXXX"
+}
 ```
 
-### Security Features
-- **On-device Processing**: All liveness detection runs locally
-- **Randomized Actions**: Different action sequence each session
-- **Duration Validation**: Actions must be held for minimum time
-- **Face Size Constraints**: Prevents photo spoofing
-- **Multiple Face Prevention**: Ensures single person verification
+### Verify OTP
 
-### API Integration
-- **Send OTP**: `POST /api/mobile/sendOTP`
-- **Verify OTP**: `POST /api/mobile/verifyOTP`  
-- **Upload Selfie**: `POST /api/mobile/uploadSelfieWithLiveness`
+```
+POST /api/mobile/verifyOTP
+Headers:
+  Content-Type: application/json
+  Cookie: refreshToken=<provided>
+Body:
+{
+  "phoneNumber": "+91XXXXXXXXXX",
+  "otp": "<6 digits>",
+  "login_platform": "MobileApp"
+}
+```
 
-## 🎨 UI/UX Features
+**Response:** contains **JWT** used as `Authorization: Bearer <JWT>` for the next call.
 
-### Design System
-- **Modern Gradient Design**: Orange-yellow gradient theme
-- **Responsive Layout**: Works on all screen sizes
-- **Smooth Transitions**: Animated progress indicators
-- **Clear Instructions**: Step-by-step guidance
-- **Visual Feedback**: Real-time status indicators
+### Upload Selfie
 
-### User Experience
-- **Intuitive Flow**: Phone → OTP → Liveness → Selfie → Home
-- **Error Recovery**: Clear error messages with retry options
-- **Progress Tracking**: Visual progress for all operations
-- **Accessibility**: High contrast, readable fonts
+```
+POST /api/mobile/uploadUserPortrait
+Headers:
+  Authorization: Bearer <JWT from verify>
+  Cookie: refreshToken=<provided>
+Content-Type: multipart/form-data
+Form fields:
+  image = <captured selfie file>
+  username = "<E.164 format phone>"
+```
 
-## 📱 App Flow
+---
 
-1. **Phone Input Screen**
-   - E.164 format validation
-   - Send OTP functionality
-   - Error handling
+## 🛠️ Local Setup & Run (Expo)
 
-2. **OTP Verification Screen**
-   - 6-digit input with auto-submit
-   - Button state management
-   - Resend functionality
-   - Comprehensive error handling
+> Requires: Node.js ≥ 18, npm ≥ 9, Git, Android Studio (for emulator) **or** an Android device with the **Expo Go** app.
 
-3 **Selfie Capture Screen**
-   - High-quality camera capture
-   - Preview functionality
-   - Upload with progress
+1. **Clone & Install**
 
-4 **Home Screen**
-   - Welcome message
-   - User data display
-   - Uploaded selfie
-   - Logout option
+   ```bash
+   git clone https://github.com/5mokshith/FlashBack-hackathon
+   cd flashback-hackathon
+   npm install
+   ```
 
-## 🚀 Key Achievements
+2. **Environment Variables**
+   Create a **`.env`** file in the project root (no values committed). Expo recommends the `EXPO_PUBLIC_` prefix for app‑readable envs.
 
-### Technical Excellence
-- **Zero External Dependencies**: No paid/proprietary SDKs used
-- **Type Safety**: Full TypeScript implementation
-- **Performance**: Optimized face detection processing
-- **Security**: Local-only liveness processing
+   ```ini
+   # .env (placeholders — founders will provide the cookie value)
+   EXPO_PUBLIC_API_BASE_URL=https://flashback.inc:9000
+   EXPO_PUBLIC_REFRESH_TOKEN=<provided-after-verification-of-OTP-by-server>
+   EXPO_PUBLIC_LOGIN_PLATFORM=MobileApp
+   ```
 
-### Code Quality
-- **Clean Architecture**: Separation of concerns
-- **Error Handling**: Comprehensive error management
-- **Documentation**: Well-documented code
-- **Best Practices**: Modern React Native patterns
+   * `EXPO_PUBLIC_API_BASE_URL` → base URL for all API calls
+   * `EXPO_PUBLIC_REFRESH_TOKEN` → used to send `Cookie: refreshToken=<value>`
+   * `EXPO_PUBLIC_LOGIN_PLATFORM` → fixed value `MobileApp` per API spec
 
-### User Experience
-- **Intuitive Design**: Easy-to-follow flow
-- **Visual Feedback**: Real-time status updates
-- **Error Recovery**: Graceful error handling
-- **Accessibility**: Inclusive design principles
+3. **Run in development**
 
-## 📦 Deliverables
+   ```bash
+   npm start
+   ```
 
-### Source Code
-- ✅ Complete React Native application
-- ✅ TypeScript implementation
-- ✅ Clean, documented code
-- ✅ Proper project structure
+   * **On device:** install **Expo Go** on Android → scan the QR from the terminal/browser.
+   * **On emulator:** ensure an Android Virtual Device is running → press `a` in the Expo CLI.
 
-### Documentation
-- ✅ Comprehensive README.md
-- ✅ Setup instructions
-- ✅ Architecture overview
-- ✅ Liveness detection description
+4. **Build an APK (optional, local)**
 
-### Build Instructions
-- ✅ APK build script
-- ✅ Production build commands
-- ✅ Environment configuration
+   ```bash
+   # Prebuild native projects, then make a release build
+   npx expo prebuild --clean
+   eas build --platform android --profile preview
+   eas build --platform android --profile production
+   npx expo run:android --variant=release
+   cd android
+   ./gradlew assembleRelease
+   # APK will be at app/build/outputs/apk/release/app-release.apk
+   ```
 
-## 🔍 Testing
+   > If your project uses EAS, you can also run `eas build -p android --profile preview`.
 
-### Manual Testing Completed
-- [x] Phone number validation
-- [x] OTP sending and verification
-- [x] Liveness detection with all gestures
-- [x] Selfie capture and upload
-- [x] Error handling scenarios
-- [x] UI responsiveness
+---
 
-### Test Scenarios
-- **Happy Path**: Complete flow from phone to home
-- **Error Scenarios**: Invalid OTP, network failures, camera issues
-- **Edge Cases**: Multiple faces, poor lighting, interrupted flow
-- **Device Compatibility**: Different screen sizes and orientations
+## 🧱 Project Structure (high level)
 
-## 🎯 Hackathon Goals Met
+```
+flashback-hackathon/
+├─ app/                     # Expo Router screens (or screens/ if using react-navigation)
+│  ├─ index.tsx             # Phone input + Send OTP
+│  ├─ verify.tsx            # OTP screen
+│  ├─ selfie.tsx            # Camera + upload
+│  └─ home.tsx              # Post-login
+├─ src/
+│  ├─ api/                  # API clients (sendOTP, verifyOTP, uploadSelfie)
+│  ├─ components/           # Reusable UI (inputs, buttons, toasts)
+│  ├─ hooks/                # useAuth, useCamera, useUpload
+│  ├─ lib/                  # validators, helpers
+│  └─ store/                # auth state (JWT, phone), persisted when needed
+├─ assets/                  # icons, images
+├─ app.json / app.config.ts # Expo config (reads EXPO_PUBLIC_* envs)
+├─ package.json
+└─ README.md
+```
 
-### Functional Requirements ✅
-- Phone & OTP flow with proper validation
-- On-device liveness detection
-- Selfie capture and upload
-- Comprehensive error handling
-- Navigation to home with user data
+---
 
-### Non-Functional Requirements ✅
-- No paid/proprietary SDKs used
-- Clean code architecture
-- Proper error handling
-- Well-documented code
-- Smooth screen transitions
-- Responsive UI design
+## 🔐 Security & Data Handling
 
-## 🏆 Innovation Highlights
+* **No secrets committed**; cookie value is injected from `.env` at runtime
+* JWT is stored in app state/memory (not committed); cleared on logout
+* Only front camera capture allowed (no gallery import)
+* Minimal PII: phone (E.164) and selfie image sent only to provided endpoints
 
-### Advanced Liveness Detection
-- **Multi-gesture Recognition**: 5 different gesture types
-- **Duration Validation**: Prevents quick spoofing attempts
-- **Randomized Actions**: Enhanced security
-- **Real-time Processing**: Immediate feedback
+---
 
-### Enhanced User Experience
-- **Progressive Disclosure**: Information revealed as needed
-- **Visual Progress**: Clear indication of completion status
-- **Error Recovery**: Graceful handling of failures
-- **Accessibility**: Inclusive design for all users
+## 🚦 UX Details
 
-### Security Features
-- **Local Processing**: Privacy-first approach
-- **Device Fingerprinting**: Additional security layer
-- **Session Management**: Secure token handling
-- **Input Validation**: Comprehensive sanitization
+* Disabled buttons while requests are in flight
+* Helpful toasts/messages for validation and API errors
+* Clear instructions on the selfie screen
+* Consistent spacing/typography; works on common Android resolutions
+
+---
+
+## 🧰 Scripts
+
+```json
+{
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "build:android": "expo prebuild --platform android && cd android && ./gradlew assembleRelease"
+  }
+}
+```
+
+---
 
 
 ---
 
-**Submission Status**: ✅ Complete  
-**Ready for Review**: ✅ Yes  
-**APK Available**: ✅ Yes (via build script)  
-**Documentation**: ✅ Complete  
-**Code Quality**: ✅ Production Ready
+## 🧭 Architecture Overview
+![IMG20250824225310](https://github.com/user-attachments/assets/9ddedf61-51d7-4d83-8463-2a6c355a0ee8)
+
+**Layers**
+
+* **UI (Screens)** → minimal logic; calls hooks/actions
+* **State (Store)** → holds `phone`, `jwt`, and ephemeral UI state
+* **API Client** → thin wrappers around `fetch` with base URL and headers
+* **Utilities** → validators (E.164, OTP), error mapping, form helpers
+
+**Data flow**
+
+1. `sendOTP(phone)` → backend sends OTP
+2. `verifyOTP(phone, otp, platform)` → returns JWT
+3. `uploadSelfie(jwt, file, username)` → stores portrait
+4. Navigate to **Home** with user context
+
+---
+
+## 📌 Notes & Limitations
+
+* iOS not tested during the hackathon window
+* If backend rate‑limits OTP requests, UI surfaces a friendly message
+
+---
+
+## 🧭 Manual Test Scenarios (executed)
+
+* ✅ Valid phone → OTP sent → correct OTP → selfie → upload → home
+* ✅ Invalid phone format → validation error
+* ✅ Wrong/expired OTP → API error surfaced; user can retry
+* ✅ Camera denied → prompt to enable permissions
+* ✅ Network down during upload → user sees retry option
+
+---
+
+## 🤝 Handover
+
+* Public GitHub repository will be shared via email to the founders
+* README contains all run/build steps and env placeholders (no secrets)
+* Demo and APK links (above) for quick verification
+
+---
+
+* Email: *[you@example.com](mailto:you@example.com)*
+* LinkedIn/GitHub: *links here*
