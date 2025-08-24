@@ -250,13 +250,3 @@ flashback-hackathon/
 
 ---
 
-## 🤝 Handover
-
-* Public GitHub repository will be shared via email to the founders
-* README contains all run/build steps and env placeholders (no secrets)
-* Demo and APK links (above) for quick verification
-
----
-
-* Email: *[you@example.com](mailto:you@example.com)*
-* LinkedIn/GitHub: *links here*
