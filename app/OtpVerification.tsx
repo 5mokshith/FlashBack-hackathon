@@ -79,9 +79,9 @@ export default function OtpVerification() {
           await SecureStorage.storeUserPhone(phoneNumber!);
         }
         
-        // Navigate to liveness check after successful verification
+        // Navigate to selfie capture with liveness detection after successful verification
         setTimeout(() => {
-          router.push('./LivenessCheck'); // Navigate to liveness check
+          router.push('./SelfieCapture'); // Navigate directly to enhanced liveness detection
         }, 1500);
       } else {
         setError(response.message || 'Failed to verify OTP');
