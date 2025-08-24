@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'expo-router';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { Button } from 'react-native-paper';
 import { flashBackApiService } from '../services/api';
 import { SecureStorage } from '../utils/storage';
 
 export default function SelfieCapture() {
+  const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -162,33 +165,73 @@ export default function SelfieCapture() {
       // Server returns 200 with message field for success, not success field
       console.log('Upload result:', JSON.stringify(uploadResult, null, 2));
       
-      if (uploadResponse.ok && (uploadResult.message?.includes('successfully') || uploadResult.data)) {
+      if (uploadResponse.ok && uploadResult.message && uploadResult.message.includes('success')) {
         setUploadProgress(100);
         setSuccessMessage('✅ Selfie uploaded successfully!');
         
-        // Store selfie URL if provided (check both possible URL fields)
-        const selfieUrl = uploadResult.data?.s3Url || uploadResult.data?.secondaryUrl || uploadResult.imageUrl;
-        console.log('Extracted selfie URL:', selfieUrl);
-        
-        if (selfieUrl) {
-          console.log('Storing selfie URL in secure storage...');
-          await SecureStorage.storeUserSelfie(selfieUrl);
-          // Verify storage
-          const storedSelfie = await SecureStorage.getUserSelfie();
-          console.log('Verified stored selfie URL:', storedSelfie);
-        } else {
-          console.warn('No valid selfie URL found in response');
+        try {
+          // Compress and save the captured image to cache
+          const manipResult = await ImageManipulator.manipulateAsync(
+            capturedImage,
+            [{ resize: { width: 400 } }],
+            { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          
+          // Save the compressed image path to SecureStorage
+          await SecureStorage.storeUserSelfie(manipResult.uri);
+          
+          // Store selfie completion status
+          await SecureStorage.storeSelfieCompleted(true);
+          
+          // Navigate to home after a short delay
+          setTimeout(() => {
+            router.replace('/Home');
+          }, 1500);
+          
+        } catch (cacheError) {
+          console.error('Error processing selfie:', cacheError);
+          // Still navigate home even if processing fails
+          setTimeout(() => {
+            router.replace('/Home');
+          }, 1500);
         }
-        
-        // Store selfie completion status
-        await SecureStorage.storeSelfieCompleted(true);
-        
-        // Show success message before navigation
-        setTimeout(() => {
-          router.replace('/Home');
-        }, 1500);
       } else {
-        throw new Error(uploadResult.message || 'Upload failed');
+        // Don't throw an error for successful responses, just log them
+        console.log('Server response:', uploadResult.message);
+        // Still proceed with success flow if we have a 200 status
+        if (uploadResponse.ok) {
+          setUploadProgress(100);
+          setSuccessMessage('✅ ' + (uploadResult.message || 'Selfie processed successfully!'));
+          
+          try {
+            // Compress and save the captured image to cache
+            const manipResult = await ImageManipulator.manipulateAsync(
+              capturedImage,
+              [{ resize: { width: 400 } }],
+              { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+            );
+            
+            // Save the compressed image path to SecureStorage
+            await SecureStorage.storeUserSelfie(manipResult.uri);
+            
+            // Store selfie completion status
+            await SecureStorage.storeSelfieCompleted(true);
+            
+            // Navigate to home after a short delay
+            setTimeout(() => {
+              router.replace('/Home');
+            }, 1500);
+            
+          } catch (cacheError) {
+            console.error('Error processing selfie:', cacheError);
+            // Still navigate home even if processing fails
+            setTimeout(() => {
+              router.replace('/Home');
+            }, 1500);
+          }
+        } else {
+          throw new Error(uploadResult.message || 'Upload failed');
+        }
       }
     } catch (err: any) {
       console.error('Upload error:', err);

@@ -14,7 +14,8 @@
       "adaptiveIcon": {
         "backgroundColor": "#f59e0b"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.mokshithrao.flashBackLabs"
     },
     "web": {
       "bundler": "metro",
@@ -31,6 +32,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3c279d6a-e961-4dfa-822e-9dbaa01891d9"
+      }
     }
   }
 }

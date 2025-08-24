@@ -1,15 +1,34 @@
-import { router, useFocusEffect } from 'expo-router';
-import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Alert as RNAlert, ActivityIndicator, BackHandler } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { 
+  StyleSheet, 
+  View, 
+  Text, 
+  Image,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  RefreshControl,
+  Alert,
+  BackHandler,
+  StatusBar,
+  Dimensions
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState, useCallback } from 'react';
 import { SecureStorage } from '../utils/storage';
 import { PhoneFormatter } from '../utils/phoneFormatter';
-import { useCallback, useEffect, useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { Button } from 'react-native-paper';
+
+const { width, height } = Dimensions.get('window');
 
 export default function Home() {
+  const router = useRouter();
   const [userPhone, setUserPhone] = useState<string>('');
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Handle back button press
   useEffect(() => {
@@ -18,7 +37,7 @@ export default function Home() {
         return false; // Let the default back action happen
       }
       // If we can't go back, prevent default and show exit confirmation
-      RNAlert.alert('Exit App', 'Are you sure you want to exit?', [
+      Alert.alert('Exit App', 'Are you sure you want to exit?', [
         {
           text: 'Cancel',
           onPress: () => null,
@@ -38,62 +57,39 @@ export default function Home() {
   }, [router]);
 
   // Load user data when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      loadUserData();
-    }, [])
-  );
-
-  // Initial load
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
-      console.log('Loading user data...');
-      const phone = await SecureStorage.getUserPhone();
-      const selfie = await SecureStorage.getUserSelfie();
+      const [phone, selfie] = await Promise.all([
+        SecureStorage.getUserPhone(),
+        SecureStorage.getUserSelfie()
+      ]);
       
-      console.log('Retrieved phone:', phone);
-      console.log('Retrieved selfie URL:', selfie);
-      
-      if (phone) {
-        setUserPhone(phone);
-      }
-      
-      if (selfie) {
-        console.log('Setting selfie URL in state');
-        setSelfieUrl(selfie);
-      } else {
-        console.log('No selfie URL found in storage');
-      }
-      
-      // Show welcome message if user just completed registration
-      if (phone && selfie) {
-        setTimeout(() => {
-          RNAlert.alert(
-            'Welcome!',
-            `Registration completed successfully for ${PhoneFormatter.formatForDisplay(phone)}`,
-            [{ text: 'OK' }]
-          );
-        }, 500);
-      }
+      if (phone) setUserPhone(phone);
+      if (selfie) setSelfieUrl(selfie);
     } catch (error) {
       console.error('Error loading user data:', error);
+      Alert.alert('Error', 'Failed to load user data');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
 
   const handleLogout = () => {
-    RNAlert.alert(
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
         {
           text: 'Cancel',
           style: 'cancel',
+          onPress: () => Haptics.selectionAsync()
         },
         {
           text: 'Logout',
@@ -103,110 +99,121 @@ export default function Home() {
               // Clear all stored data
               await SecureStorage.clearAll();
               
-              // Reset navigation stack and navigate to login
+              // Navigate to login screen
               router.replace('/');
-              
-              // Force a hard reset of the navigation state
-              if (router.canGoBack()) {
-                router.back();
-              }
-              
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error) {
               console.error('Error during logout:', error);
-              RNAlert.alert('Error', 'Failed to logout. Please try again.');
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
             }
-          },
-        },
+          }
+        }
       ]
     );
   };
 
+  const refreshData = async () => {
+    try {
+      setIsRefreshing(true);
+      await loadUserData();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <LinearGradient colors={['#f59e0b', '#d97706', '#92400e']} style={styles.container}>
+      <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
+        <StatusBar barStyle="light-content" />
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <View style={styles.loadingSpinner}>
+            <Ionicons name="camera" size={40} color="#4cc9f0" />
+          </View>
+          <Text style={styles.loadingText}>Loading your profile...</Text>
         </View>
       </LinearGradient>
     );
   }
 
   return (
-    <LinearGradient colors={['#1e3a8a', '#3b82f6', '#60a5fa']} style={styles.container}>
+    <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
-          {/* Header with Logout */}
+        <ScrollView 
+          contentContainerStyle={styles.scrollView}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={refreshData}
+              colors={['#4cc9f0']}
+              tintColor="#4cc9f0"
+            />
+          }
+        >
+          {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.appName}>FlashBack Labs</Text>
+            <View style={styles.headerContent}>
+              <View style={styles.logoContainer}>
+                <Ionicons name="camera" size={28} color="#fff" />
+                <Text style={styles.appName}>FlashBack</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={handleLogout} 
+                style={styles.logoutButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="log-out-outline" size={24} color="#fff" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-              <Text style={styles.logoutButtonText}>Logout</Text>
-            </TouchableOpacity>
           </View>
 
-          {/* Main Content */}
-          <View style={styles.mainContent}>
-            {/* Welcome Section */}
-            <View style={styles.welcomeSection}>
-              <View style={styles.welcomeIconContainer}>
-                <Text style={styles.welcomeEmoji}>👋</Text>
-              </View>
-              <Text style={styles.welcomeTitle}>Welcome Back!</Text>
-              <Text style={styles.welcomeSubtitle}>
-                Your account is verified and ready to use
-              </Text>
-            </View>
-
-            {/* User Profile Card */}
-            <View style={styles.profileCard}>
-              {/* Profile Image */}
-              <View style={styles.profileImageSection}>
-                {selfieUrl ? (
-                  <View style={styles.profileImageContainer}>
-                    <Image
-                      source={{ uri: selfieUrl }}
-                      style={styles.profileImage}
-                      resizeMode="cover"
-                      onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-                      onLoad={() => console.log('Image loaded successfully')}
-                    />
-                    <View style={styles.verifiedBadge}>
-                      <Text style={styles.verifiedIcon}>✓</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.placeholderImageContainer}>
-                    <Text style={styles.placeholderIcon}>👤</Text>
-                    <Text style={{marginTop: 8, color: '#9ca3af', fontSize: 12}}>No selfie available</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* User Info */}
-              <View style={styles.userInfoSection}>
-                <Text style={styles.userLabel}>Verified Phone Number</Text>
-                <Text style={styles.userPhone}>
+          {/* Welcome Card */}
+          <View style={styles.welcomeCard}>
+            <View style={styles.welcomeContent}>
+              <Text style={styles.welcomeTitleText}>Welcome Back!</Text>
+              {userPhone && (
+                <Text style={styles.welcomeSubtitle}>
                   {PhoneFormatter.formatForDisplay(userPhone)}
                 </Text>
-                
-                <View style={styles.statusContainer}>
-                  <View style={styles.statusIndicator} />
-                  <Text style={styles.statusText}>Account Active</Text>
-                </View>
-              </View>
+              )}
             </View>
+           
+          </View>
 
-            {/* Success Message */}
-            <View style={styles.successCard}>
-              <View style={styles.successIconContainer}>
-                <Text style={styles.successIcon}>🎉</Text>
+          {/* Profile Card */}
+          <View style={styles.profileCard}>
+            <View style={styles.avatarContainer}>
+              {selfieUrl ? (
+                <Image 
+                  source={{ uri: selfieUrl }} 
+                  style={styles.avatar}
+                  resizeMode="cover"
+                  onError={(e) => {
+                    console.log('Error loading selfie:', e.nativeEvent.error);
+                    setSelfieUrl(null);
+                  }}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person" size={40} color="#666" />
+                </View>
+              )}
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
               </View>
-              <Text style={styles.successTitle}>Verification Complete!</Text>
-              <Text style={styles.successMessage}>
-                Your identity has been successfully verified. You can now access all features of FlashBack Labs.
-              </Text>
             </View>
+            <Text style={styles.verifiedText}>Verified Profile</Text>
+          </View>
+
+          {/* Success Message */}
+          <View style={styles.successMessage}>
+            <Text style={styles.successMessageText}>
+              Your account has been successfully verified!
+            </Text>
           </View>
 
           {/* Footer */}
@@ -214,7 +221,7 @@ export default function Home() {
             <Text style={styles.footerText}>Secure • Verified • Protected</Text>
             <Text style={styles.footerBrand}>Powered by FlashBack Labs</Text>
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -223,45 +230,284 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0f172a',
   },
   safeArea: {
     flex: 1,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
+  scrollView: {
+    flexGrow: 1,
+    padding: 16,
   },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  appName: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    marginLeft: 12,
+    letterSpacing: 0.5,
+  },
+  logoutButton: {
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  welcomeCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  // welcomeTitle and welcomeSubtitle moved to their final positions below
+  // successMessage and related styles moved to their final positions below
+  avatarContainer: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    position: 'relative',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 70,
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 70,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 20,
+    backgroundColor: '#4cc9f0',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#1a1a2e',
+  } as const,
+  verifiedText: {
+    color: '#10b981',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+    letterSpacing: 0.5,
+  },
+  welcomeContent: {
+    flex: 1,
+  },
+  welcomeIcon: {
+    backgroundColor: 'rgba(76, 201, 240, 0.1)',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileSection: {
+    marginBottom: 20,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  selfieImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: 'rgba(76, 201, 240, 0.3)',
+  },
+  selfiePlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderStyle: 'dashed',
+  },
+  /* verifiedBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 20,
+    backgroundColor: '#4cc9f0',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#1a1a2e',
+  } as const, */
+  userInfo: {
+    alignItems: 'center',
+  },
+  phoneLabel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: 4,
+    fontFamily: 'Inter-Medium',
+  },
+  phoneNumber: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 12,
+    fontFamily: 'Inter-SemiBold',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22c55e',
+    marginRight: 6,
+  },
+  statusText: {
+    color: '#22c55e',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  actionButtons: {
+    marginTop: 24,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  primaryButton: {
+    backgroundColor: '#4cc9f0',
+  },
+  secondaryButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  secondaryButtonText: {
+    color: '#4cc9f0',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  successMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 'auto',
+    marginBottom: 20,
+  } as const,
+  // successIcon is defined below with more properties
+  successText: {
+    color: '#22c55e',
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center' as const,
+  } as const,
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '500',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loadingSpinner: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(76, 201, 240, 0.1)',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 20,
+    marginBottom: 20,
+  },
+  loadingText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 16,
+    marginTop: 16,
+    fontFamily: 'Inter-Medium',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   headerLeft: {
     flex: 1,
   },
-  appName: {
+  /* appName: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
-  },
-  logoutButton: {
+  }, */
+ /*  logoutButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
-  },
+  }, */
   logoutButtonText: {
     color: 'white',
     fontSize: 14,
@@ -274,7 +520,7 @@ const styles = StyleSheet.create({
   welcomeSection: {
     alignItems: 'center',
     marginBottom: 40,
-  },
+  } as const,
   welcomeIconContainer: {
     width: 80,
     height: 80,
@@ -287,19 +533,19 @@ const styles = StyleSheet.create({
   welcomeEmoji: {
     fontSize: 40,
   },
-  welcomeTitle: {
+  welcomeTitleText: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: 'white',
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: 'center' as const,
   },
   welcomeSubtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
+    textAlign: 'center' as const,
     lineHeight: 22,
-  },
+  } as const,
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 20,
@@ -325,19 +571,7 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: '#3b82f6',
   },
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#10b981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'white',
-  },
+  // verifiedBadge is already defined above
   verifiedIcon: {
     color: 'white',
     fontSize: 16,
@@ -381,18 +615,18 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  statusIndicator: {
+  /* statusIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#10b981',
     marginRight: 6,
-  },
-  statusText: {
+  }, */
+  /* statusText: {
     fontSize: 12,
     color: '#10b981',
     fontWeight: '600',
-  },
+  }, */
   successCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 16,
@@ -404,7 +638,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
-  },
+  } as const,
   successIconContainer: {
     width: 60,
     height: 60,
@@ -413,7 +647,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-  },
+  } as const,
   successIcon: {
     fontSize: 30,
   },
@@ -424,12 +658,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
-  successMessage: {
+  successMessageText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#22c55e',
     textAlign: 'center',
     lineHeight: 20,
-  },
+  } as const,
   footer: {
     alignItems: 'center',
     paddingBottom: 30,

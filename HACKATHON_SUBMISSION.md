@@ -18,14 +18,6 @@
 - [x] Comprehensive error handling (invalid/expired OTP)
 - [x] Button state management to prevent resubmission
 
-### 2. Liveness Check Before Capture ✅
-- [x] Front camera integration
-- [x] No gallery import allowed
-- [x] All liveness logic runs locally (on-device)
-- [x] Face detection using Expo FaceDetector
-- [x] Multiple gesture detection (blink, head turns, nod, smile)
-- [x] Real-time progress tracking
-- [x] Security features (randomized actions, duration validation)
 
 ### 3. Selfie Capture & Upload ✅
 - [x] Selfie capture only after liveness verification
@@ -101,18 +93,12 @@
    - Resend functionality
    - Comprehensive error handling
 
-3. **Liveness Detection Screen**
-   - Real-time face detection
-   - Multiple gesture recognition
-   - Progress tracking
-   - Cancel functionality
-
-4. **Selfie Capture Screen**
+3 **Selfie Capture Screen**
    - High-quality camera capture
    - Preview functionality
    - Upload with progress
 
-5. **Home Screen**
+4 **Home Screen**
    - Welcome message
    - User data display
    - Uploaded selfie
