@@ -130,6 +130,7 @@ export default function SelfieCapture() {
       console.log('Auth token length:', authToken.length);
       
       // Make direct API call with proper React Native FormData
+      console.log('Sending upload request...');
       const uploadResponse = await fetch('https://flashback.inc:9000/api/mobile/uploadUserPortrait', {
         method: 'POST',
         headers: {
@@ -139,6 +140,7 @@ export default function SelfieCapture() {
         },
         body: formData,
       });
+      console.log('Upload response status:', uploadResponse.status);
 
       const responseText = await uploadResponse.text();
       console.log('Upload response status:', uploadResponse.status);
@@ -158,14 +160,24 @@ export default function SelfieCapture() {
       setUploadProgress(75);
 
       // Server returns 200 with message field for success, not success field
+      console.log('Upload result:', JSON.stringify(uploadResult, null, 2));
+      
       if (uploadResponse.ok && (uploadResult.message?.includes('successfully') || uploadResult.data)) {
         setUploadProgress(100);
         setSuccessMessage('✅ Selfie uploaded successfully!');
         
         // Store selfie URL if provided (check both possible URL fields)
         const selfieUrl = uploadResult.data?.s3Url || uploadResult.data?.secondaryUrl || uploadResult.imageUrl;
+        console.log('Extracted selfie URL:', selfieUrl);
+        
         if (selfieUrl) {
+          console.log('Storing selfie URL in secure storage...');
           await SecureStorage.storeUserSelfie(selfieUrl);
+          // Verify storage
+          const storedSelfie = await SecureStorage.getUserSelfie();
+          console.log('Verified stored selfie URL:', storedSelfie);
+        } else {
+          console.warn('No valid selfie URL found in response');
         }
         
         // Store selfie completion status

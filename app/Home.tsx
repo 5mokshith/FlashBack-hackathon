@@ -1,46 +1,78 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Image,
-} from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, Alert as RNAlert, ActivityIndicator, BackHandler } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button } from 'react-native-paper';
-import { router } from 'expo-router';
 import { SecureStorage } from '../utils/storage';
 import { PhoneFormatter } from '../utils/phoneFormatter';
+import { useCallback, useEffect, useState } from 'react';
 
 export default function Home() {
   const [userPhone, setUserPhone] = useState<string>('');
   const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Handle back button press
+  useEffect(() => {
+    const backAction = () => {
+      if (router.canGoBack()) {
+        return false; // Let the default back action happen
+      }
+      // If we can't go back, prevent default and show exit confirmation
+      RNAlert.alert('Exit App', 'Are you sure you want to exit?', [
+        {
+          text: 'Cancel',
+          onPress: () => null,
+          style: 'cancel',
+        },
+        { text: 'Exit', onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [router]);
+
+  // Load user data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadUserData();
+    }, [])
+  );
+
+  // Initial load
   useEffect(() => {
     loadUserData();
   }, []);
 
   const loadUserData = async () => {
     try {
+      console.log('Loading user data...');
       const phone = await SecureStorage.getUserPhone();
       const selfie = await SecureStorage.getUserSelfie();
+      
+      console.log('Retrieved phone:', phone);
+      console.log('Retrieved selfie URL:', selfie);
       
       if (phone) {
         setUserPhone(phone);
       }
       
       if (selfie) {
+        console.log('Setting selfie URL in state');
         setSelfieUrl(selfie);
+      } else {
+        console.log('No selfie URL found in storage');
       }
       
       // Show welcome message if user just completed registration
       if (phone && selfie) {
         setTimeout(() => {
-          Alert.alert(
+          RNAlert.alert(
             'Welcome!',
             `Registration completed successfully for ${PhoneFormatter.formatForDisplay(phone)}`,
             [{ text: 'OK' }]
@@ -55,7 +87,7 @@ export default function Home() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
+    RNAlert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
@@ -68,10 +100,20 @@ export default function Home() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Clear all stored data
               await SecureStorage.clearAll();
+              
+              // Reset navigation stack and navigate to login
               router.replace('/');
+              
+              // Force a hard reset of the navigation state
+              if (router.canGoBack()) {
+                router.back();
+              }
+              
             } catch (error) {
               console.error('Error during logout:', error);
+              RNAlert.alert('Error', 'Failed to logout. Please try again.');
             }
           },
         },
@@ -126,6 +168,8 @@ export default function Home() {
                       source={{ uri: selfieUrl }}
                       style={styles.profileImage}
                       resizeMode="cover"
+                      onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                      onLoad={() => console.log('Image loaded successfully')}
                     />
                     <View style={styles.verifiedBadge}>
                       <Text style={styles.verifiedIcon}>✓</Text>
@@ -134,6 +178,7 @@ export default function Home() {
                 ) : (
                   <View style={styles.placeholderImageContainer}>
                     <Text style={styles.placeholderIcon}>👤</Text>
+                    <Text style={{marginTop: 8, color: '#9ca3af', fontSize: 12}}>No selfie available</Text>
                   </View>
                 )}
               </View>
