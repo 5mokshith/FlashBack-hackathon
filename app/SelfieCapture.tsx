@@ -126,6 +126,8 @@ export default function SelfieCapture() {
       formData.append('username', phoneNumber);
 
       console.log('Uploading with FormData for phone:', phoneNumber);
+      console.log('Image URI:', capturedImage);
+      console.log('Auth token length:', authToken.length);
       
       // Make direct API call with proper React Native FormData
       const uploadResponse = await fetch('https://flashback.inc:9000/api/mobile/uploadUserPortrait', {
@@ -133,7 +135,7 @@ export default function SelfieCapture() {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Cookie': `refreshToken=${await SecureStorage.getRefreshToken() || 'a02054c6-48d2-4fa1-90d1-74cef9020457503efd5b-bfd3-43a3-8500-1e9543aed062'}`,
-          'Content-Type': 'multipart/form-data',
+          // Don't set Content-Type for multipart/form-data - React Native will set it with boundary
         },
         body: formData,
       });
@@ -155,13 +157,15 @@ export default function SelfieCapture() {
 
       setUploadProgress(75);
 
-      if (uploadResponse.success) {
+      // Server returns 200 with message field for success, not success field
+      if (uploadResponse.ok && (uploadResult.message?.includes('successfully') || uploadResult.data)) {
         setUploadProgress(100);
         setSuccessMessage('✅ Selfie uploaded successfully!');
         
-        // Store selfie URL if provided
-        if (uploadResponse.imageUrl) {
-          await SecureStorage.storeUserSelfie(uploadResponse.imageUrl);
+        // Store selfie URL if provided (check both possible URL fields)
+        const selfieUrl = uploadResult.data?.s3Url || uploadResult.data?.secondaryUrl || uploadResult.imageUrl;
+        if (selfieUrl) {
+          await SecureStorage.storeUserSelfie(selfieUrl);
         }
         
         // Store selfie completion status
@@ -172,7 +176,7 @@ export default function SelfieCapture() {
           router.replace('/Home');
         }, 1500);
       } else {
-        throw new Error(uploadResponse.message || 'Upload failed');
+        throw new Error(uploadResult.message || 'Upload failed');
       }
     } catch (err: any) {
       console.error('Upload error:', err);
@@ -188,7 +192,9 @@ export default function SelfieCapture() {
       } else if (err.message?.includes('timeout')) {
         errorMessage += 'Upload timed out. Please try again with a better connection.';
       } else if (err.message?.includes('server') || err.message?.includes('500')) {
-        errorMessage += 'Server error. Please try again in a few moments.';
+        errorMessage += 'Server processing error. The image format may not be supported. Please retake the photo and try again.';
+      } else if (err.message?.includes('Failed to upload user portrait')) {
+        errorMessage += 'Server could not process the image. Please ensure good lighting and retake the photo.';
       } else if (err.message?.includes('size') || err.message?.includes('large')) {
         errorMessage += 'Image too large. Please retake with lower quality.';
       } else {

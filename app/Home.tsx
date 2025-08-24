@@ -90,132 +90,86 @@ export default function Home() {
   }
 
   return (
-    <LinearGradient colors={['#f59e0b', '#d97706', '#92400e']} style={styles.container}>
+    <LinearGradient colors={['#1e3a8a', '#3b82f6', '#60a5fa']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView 
-          style={styles.container}
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
+        <View style={styles.content}>
+          {/* Header with Logout */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>FlashBack Labs</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.appName}>FlashBack Labs</Text>
+            </View>
             <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
               <Text style={styles.logoutButtonText}>Logout</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Welcome Card */}
-          <View style={styles.welcomeCard}>
-            <View style={styles.welcomeIcon}>
-              <Text style={styles.welcomeIconText}>🎉</Text>
-            </View>
-            
-            <Text style={styles.welcomeTitle}>Welcome!</Text>
-            <Text style={styles.welcomeSubtitle}>
-              You have successfully completed the verification process
-            </Text>
-            
-            <View style={styles.userInfoContainer}>
-              <Text style={styles.userInfoLabel}>Phone Number:</Text>
-              <Text style={styles.userInfoValue}>
-                {PhoneFormatter.formatForDisplay(userPhone)}
+          {/* Main Content */}
+          <View style={styles.mainContent}>
+            {/* Welcome Section */}
+            <View style={styles.welcomeSection}>
+              <View style={styles.welcomeIconContainer}>
+                <Text style={styles.welcomeEmoji}>👋</Text>
+              </View>
+              <Text style={styles.welcomeTitle}>Welcome Back!</Text>
+              <Text style={styles.welcomeSubtitle}>
+                Your account is verified and ready to use
               </Text>
             </View>
-          </View>
 
-          {/* Selfie Display */}
-          {selfieUrl ? (
-            <View style={styles.selfieCard}>
-              <Text style={styles.selfieTitle}>Your Selfie</Text>
-              <View style={styles.selfieContainer}>
-                <Image
-                  source={{ uri: selfieUrl }}
-                  style={styles.selfieImage}
-                  resizeMode="cover"
-                />
+            {/* User Profile Card */}
+            <View style={styles.profileCard}>
+              {/* Profile Image */}
+              <View style={styles.profileImageSection}>
+                {selfieUrl ? (
+                  <View style={styles.profileImageContainer}>
+                    <Image
+                      source={{ uri: selfieUrl }}
+                      style={styles.profileImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.verifiedBadge}>
+                      <Text style={styles.verifiedIcon}>✓</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.placeholderImageContainer}>
+                    <Text style={styles.placeholderIcon}>👤</Text>
+                  </View>
+                )}
               </View>
-              <Text style={styles.selfieSubtitle}>
-                Successfully uploaded and verified
+
+              {/* User Info */}
+              <View style={styles.userInfoSection}>
+                <Text style={styles.userLabel}>Verified Phone Number</Text>
+                <Text style={styles.userPhone}>
+                  {PhoneFormatter.formatForDisplay(userPhone)}
+                </Text>
+                
+                <View style={styles.statusContainer}>
+                  <View style={styles.statusIndicator} />
+                  <Text style={styles.statusText}>Account Active</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Success Message */}
+            <View style={styles.successCard}>
+              <View style={styles.successIconContainer}>
+                <Text style={styles.successIcon}>🎉</Text>
+              </View>
+              <Text style={styles.successTitle}>Verification Complete!</Text>
+              <Text style={styles.successMessage}>
+                Your identity has been successfully verified. You can now access all features of FlashBack Labs.
               </Text>
             </View>
-          ) : (
-            <View style={styles.selfieCard}>
-              <Text style={styles.selfieTitle}>Selfie Status</Text>
-              <View style={styles.noSelfieContainer}>
-                <Text style={styles.noSelfieIcon}>📷</Text>
-                <Text style={styles.noSelfieText}>No selfie uploaded</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Verification Steps */}
-          <View style={styles.stepsCard}>
-            <Text style={styles.stepsTitle}>Verification Steps Completed</Text>
-            
-            <View style={styles.stepItem}>
-              <View style={styles.stepIcon}>
-                <Text style={styles.stepIconText}>✓</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Phone Verification</Text>
-                <Text style={styles.stepDescription}>OTP successfully verified</Text>
-              </View>
-            </View>
-
-            <View style={styles.stepItem}>
-              <View style={styles.stepIcon}>
-                <Text style={styles.stepIconText}>✓</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Identity Verification</Text>
-                <Text style={styles.stepDescription}>Phone number verified successfully</Text>
-              </View>
-            </View>
-
-            <View style={styles.stepItem}>
-              <View style={styles.stepIcon}>
-                <Text style={styles.stepIconText}>✓</Text>
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={styles.stepTitle}>Selfie Upload</Text>
-                <Text style={styles.stepDescription}>Selfie captured and uploaded successfully</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionsContainer}>
-            <Button
-              mode="contained"
-              onPress={() => Alert.alert('Info', 'This is the home screen after successful verification.')}
-              style={styles.actionButton}
-              buttonColor="#fbbf24"
-              textColor="#111827"
-            >
-              Get Started
-            </Button>
-            
-            <Button
-              mode="outlined"
-              onPress={() => router.push('/')}
-              style={[styles.actionButton, styles.secondaryButton]}
-              textColor="white"
-            >
-              Start Over
-            </Button>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Secure • Fast • Reliable
-            </Text>
-            <Text style={styles.footerSubtext}>
-              Powered by FlashBack Labs
-            </Text>
+            <Text style={styles.footerText}>Secure • Verified • Protected</Text>
+            <Text style={styles.footerBrand}>Powered by FlashBack Labs</Text>
           </View>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </LinearGradient>
   );
@@ -228,11 +182,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  scrollContainer: {
-    flexGrow: 1,
+  content: {
+    flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -248,15 +200,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
-  headerTitle: {
-    fontSize: 24,
+  headerLeft: {
+    flex: 1,
+  },
+  appName: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
   },
   logoutButton: {
-    padding: 8,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
@@ -264,186 +220,184 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     color: 'white',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  welcomeCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
+  mainContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  welcomeSection: {
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
+    marginBottom: 40,
   },
-  welcomeIcon: {
+  welcomeIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fef3c7',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  welcomeIconText: {
+  welcomeEmoji: {
     fontSize: 40,
   },
   welcomeTitle: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: '#111827',
+    color: 'white',
     marginBottom: 8,
     textAlign: 'center',
   },
   welcomeSubtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-    marginBottom: 20,
     lineHeight: 22,
   },
-  userInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9fafb',
-    padding: 12,
-    borderRadius: 8,
-    width: '100%',
-  },
-  userInfoLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginRight: 8,
-  },
-  userInfoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  selfieCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
+  profileCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+    padding: 30,
+    marginBottom: 30,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  selfieTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 16,
+  profileImageSection: {
+    marginBottom: 20,
   },
-  selfieContainer: {
+  profileImageContainer: {
+    position: 'relative',
+  },
+  profileImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    overflow: 'hidden',
-    marginBottom: 12,
-    borderWidth: 3,
-    borderColor: '#fbbf24',
+    borderWidth: 4,
+    borderColor: '#3b82f6',
   },
-  selfieImage: {
-    width: '100%',
-    height: '100%',
-  },
-  selfieSubtitle: {
-    fontSize: 14,
-    color: '#10b981',
-    fontWeight: '500',
-  },
-  noSelfieContainer: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  noSelfieIcon: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  noSelfieText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  stepsCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  stepsTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  stepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  stepIcon: {
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
     width: 32,
     height: 32,
     borderRadius: 16,
     backgroundColor: '#10b981',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    borderWidth: 3,
+    borderColor: 'white',
   },
-  stepIconText: {
+  verifiedIcon: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  stepContent: {
-    flex: 1,
+  placeholderImageContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: '#d1d5db',
   },
-  stepTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
+  placeholderIcon: {
+    fontSize: 48,
+    color: '#9ca3af',
   },
-  stepDescription: {
+  userInfoSection: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  userLabel: {
     fontSize: 14,
     color: '#6b7280',
+    fontWeight: '500',
+    marginBottom: 4,
   },
-  actionsContainer: {
-    gap: 12,
+  userPhone: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+    marginRight: 6,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#10b981',
+    fontWeight: '600',
+  },
+  successCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 24,
     marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  actionButton: {
-    borderRadius: 25,
-    paddingVertical: 12,
+  successIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#fef3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  secondaryButton: {
-    borderColor: 'white',
+  successIcon: {
+    fontSize: 30,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   footer: {
     alignItems: 'center',
+    paddingBottom: 30,
   },
   footerText: {
-    color: '#fde68a',
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 4,
   },
-  footerSubtext: {
-    color: '#fde68a',
+  footerBrand: {
+    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 12,
-    opacity: 0.8,
   },
 });
   
