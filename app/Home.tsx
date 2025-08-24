@@ -4,19 +4,20 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  TouchableOpacity,
   ScrollView,
+  TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import { Button } from 'react-native-paper';
+import { router } from 'expo-router';
 import { SecureStorage } from '../utils/storage';
 import { PhoneFormatter } from '../utils/phoneFormatter';
 
 export default function Home() {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [userPhone, setUserPhone] = useState<string>('');
+  const [selfieUrl, setSelfieUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,11 +26,27 @@ export default function Home() {
 
   const loadUserData = async () => {
     try {
-      const storedPhone = await SecureStorage.getUserPhone();
-      const storedToken = await SecureStorage.getAuthToken();
+      const phone = await SecureStorage.getUserPhone();
+      const selfie = await SecureStorage.getUserSelfie();
       
-      if (storedPhone) setPhoneNumber(storedPhone);
-      if (storedToken) setAuthToken(storedToken);
+      if (phone) {
+        setUserPhone(phone);
+      }
+      
+      if (selfie) {
+        setSelfieUrl(selfie);
+      }
+      
+      // Show welcome message if user just completed registration
+      if (phone && selfie) {
+        setTimeout(() => {
+          Alert.alert(
+            'Welcome!',
+            `Registration completed successfully for ${PhoneFormatter.formatForDisplay(phone)}`,
+            [{ text: 'OK' }]
+          );
+        }, 500);
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -37,7 +54,7 @@ export default function Home() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -48,13 +65,13 @@ export default function Home() {
         },
         {
           text: 'Logout',
+          style: 'destructive',
           onPress: async () => {
             try {
               await SecureStorage.clearAll();
-              router.replace('./PhoneInput');
+              router.replace('/');
             } catch (error) {
               console.error('Error during logout:', error);
-              router.replace('./PhoneInput');
             }
           },
         },
@@ -65,11 +82,9 @@ export default function Home() {
   if (isLoading) {
     return (
       <LinearGradient colors={['#f59e0b', '#d97706', '#92400e']} style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
-        </SafeAreaView>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       </LinearGradient>
     );
   }
@@ -77,98 +92,128 @@ export default function Home() {
   return (
     <LinearGradient colors={['#f59e0b', '#d97706', '#92400e']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.scrollContainer}>
-          <View style={styles.content}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.welcomeTitle}>Welcome to FlashBack Labs!</Text>
-              <Text style={styles.welcomeSubtitle}>Authentication Complete</Text>
+        <ScrollView 
+          style={styles.container}
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>FlashBack Labs</Text>
+            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+              <Text style={styles.logoutButtonText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Welcome Card */}
+          <View style={styles.welcomeCard}>
+            <View style={styles.welcomeIcon}>
+              <Text style={styles.welcomeIconText}>🎉</Text>
             </View>
-
-            {/* User Info Card */}
-            <View style={styles.userCard}>
-              <View style={styles.userInfo}>
-                <Text style={styles.userLabel}>Phone Number</Text>
-                <Text style={styles.userValue}>
-                  {phoneNumber ? PhoneFormatter.formatForDisplay(phoneNumber) : 'Not available'}
-                </Text>
-              </View>
-
-              <View style={styles.userInfo}>
-                <Text style={styles.userLabel}>Status</Text>
-                <View style={styles.statusContainer}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>Verified</Text>
-                </View>
-              </View>
-
-              <View style={styles.userInfo}>
-                <Text style={styles.userLabel}>Authentication</Text>
-                <Text style={styles.userValue}>
-                  {authToken ? 'Active Session' : 'No Token'}
-                </Text>
-              </View>
-            </View>
-
-            {/* Features Card */}
-            <View style={styles.featuresCard}>
-              <Text style={styles.featuresTitle}>What's Next?</Text>
-              
-              <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>✅</Text>
-                <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>Phone Verification</Text>
-                  <Text style={styles.featureDescription}>Successfully completed</Text>
-                </View>
-              </View>
-
-              <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>✅</Text>
-                <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>Liveness Check</Text>
-                  <Text style={styles.featureDescription}>Passed all security checks</Text>
-                </View>
-              </View>
-
-              <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>✅</Text>
-                <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>Selfie Upload</Text>
-                  <Text style={styles.featureDescription}>Profile image uploaded</Text>
-                </View>
-              </View>
-
-              <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>🚀</Text>
-                <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>Ready to Explore</Text>
-                  <Text style={styles.featureDescription}>Your account is fully set up</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={styles.actionsCard}>
-              <Button
-                mode="outlined"
-                onPress={handleLogout}
-                style={styles.logoutButton}
-                textColor="#ef4444"
-                icon="logout"
-              >
-                Logout
-              </Button>
-            </View>
-
-            {/* Footer */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>
-                FlashBack Labs • Secure Authentication System
-              </Text>
-              <Text style={styles.footerSubtext}>
-                Your data is protected with end-to-end encryption
+            
+            <Text style={styles.welcomeTitle}>Welcome!</Text>
+            <Text style={styles.welcomeSubtitle}>
+              You have successfully completed the verification process
+            </Text>
+            
+            <View style={styles.userInfoContainer}>
+              <Text style={styles.userInfoLabel}>Phone Number:</Text>
+              <Text style={styles.userInfoValue}>
+                {PhoneFormatter.formatForDisplay(userPhone)}
               </Text>
             </View>
+          </View>
+
+          {/* Selfie Display */}
+          {selfieUrl ? (
+            <View style={styles.selfieCard}>
+              <Text style={styles.selfieTitle}>Your Selfie</Text>
+              <View style={styles.selfieContainer}>
+                <Image
+                  source={{ uri: selfieUrl }}
+                  style={styles.selfieImage}
+                  resizeMode="cover"
+                />
+              </View>
+              <Text style={styles.selfieSubtitle}>
+                Successfully uploaded and verified
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.selfieCard}>
+              <Text style={styles.selfieTitle}>Selfie Status</Text>
+              <View style={styles.noSelfieContainer}>
+                <Text style={styles.noSelfieIcon}>📷</Text>
+                <Text style={styles.noSelfieText}>No selfie uploaded</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Verification Steps */}
+          <View style={styles.stepsCard}>
+            <Text style={styles.stepsTitle}>Verification Steps Completed</Text>
+            
+            <View style={styles.stepItem}>
+              <View style={styles.stepIcon}>
+                <Text style={styles.stepIconText}>✓</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>Phone Verification</Text>
+                <Text style={styles.stepDescription}>OTP successfully verified</Text>
+              </View>
+            </View>
+
+            <View style={styles.stepItem}>
+              <View style={styles.stepIcon}>
+                <Text style={styles.stepIconText}>✓</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>Identity Verification</Text>
+                <Text style={styles.stepDescription}>Phone number verified successfully</Text>
+              </View>
+            </View>
+
+            <View style={styles.stepItem}>
+              <View style={styles.stepIcon}>
+                <Text style={styles.stepIconText}>✓</Text>
+              </View>
+              <View style={styles.stepContent}>
+                <Text style={styles.stepTitle}>Selfie Upload</Text>
+                <Text style={styles.stepDescription}>Selfie captured and uploaded successfully</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionsContainer}>
+            <Button
+              mode="contained"
+              onPress={() => Alert.alert('Info', 'This is the home screen after successful verification.')}
+              style={styles.actionButton}
+              buttonColor="#fbbf24"
+              textColor="#111827"
+            >
+              Get Started
+            </Button>
+            
+            <Button
+              mode="outlined"
+              onPress={() => router.push('/')}
+              style={[styles.actionButton, styles.secondaryButton]}
+              textColor="white"
+            >
+              Start Over
+            </Button>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Secure • Fast • Reliable
+            </Text>
+            <Text style={styles.footerSubtext}>
+              Powered by FlashBack Labs
+            </Text>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -185,11 +230,9 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-  },
-  content: {
-    flex: 1,
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -199,74 +242,138 @@ const styles = StyleSheet.create({
   loadingText: {
     color: 'white',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 30,
   },
-  welcomeTitle: {
-    fontSize: 28,
+  headerTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
-    textAlign: 'center',
+  },
+  logoutButton: {
+    padding: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+  },
+  logoutButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  welcomeCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  welcomeIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#fef3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  welcomeIconText: {
+    fontSize: 40,
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
     marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.25)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
+    textAlign: 'center',
   },
   welcomeSubtitle: {
     fontSize: 16,
-    color: '#fde68a',
-    textAlign: 'center',
-  },
-  userCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  userInfo: {
-    marginBottom: 16,
-  },
-  userLabel: {
-    fontSize: 12,
     color: '#6b7280',
-    fontWeight: '500',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 22,
   },
-  userValue: {
-    fontSize: 16,
-    color: '#111827',
-    fontWeight: '600',
-  },
-  statusContainer: {
+  userInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    padding: 12,
+    borderRadius: 8,
+    width: '100%',
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10b981',
+  userInfoLabel: {
+    fontSize: 14,
+    color: '#6b7280',
     marginRight: 8,
   },
-  statusText: {
-    fontSize: 16,
-    color: '#10b981',
+  userInfoValue: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#111827',
   },
-  featuresCard: {
+  selfieCard: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  selfieTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  selfieContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: '#fbbf24',
+  },
+  selfieImage: {
+    width: '100%',
+    height: '100%',
+  },
+  selfieSubtitle: {
+    fontSize: 14,
+    color: '#10b981',
+    fontWeight: '500',
+  },
+  noSelfieContainer: {
+    alignItems: 'center',
     padding: 20,
+  },
+  noSelfieIcon: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  noSelfieText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  stepsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -274,66 +381,69 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 5,
   },
-  featuresTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  stepsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#111827',
-    marginBottom: 16,
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  featureItem: {
+  stepItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  featureIcon: {
-    fontSize: 20,
-    marginRight: 12,
+  stepIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#10b981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
-  featureContent: {
+  stepIconText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  stepContent: {
     flex: 1,
   },
-  featureTitle: {
-    fontSize: 14,
+  stepTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 2,
   },
-  featureDescription: {
-    fontSize: 12,
+  stepDescription: {
+    fontSize: 14,
     color: '#6b7280',
-    lineHeight: 16,
   },
-  actionsCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
+  actionsContainer: {
+    gap: 12,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 5,
   },
-  logoutButton: {
-    borderRadius: 10,
-    borderColor: '#ef4444',
+  actionButton: {
+    borderRadius: 25,
+    paddingVertical: 12,
+  },
+  secondaryButton: {
+    borderColor: 'white',
   },
   footer: {
     alignItems: 'center',
-    paddingTop: 20,
   },
   footerText: {
     color: '#fde68a',
-    fontSize: 12,
-    textAlign: 'center',
-    opacity: 0.9,
+    fontSize: 14,
+    fontWeight: '500',
     marginBottom: 4,
   },
   footerSubtext: {
     color: '#fde68a',
-    fontSize: 10,
-    textAlign: 'center',
-    opacity: 0.7,
+    fontSize: 12,
+    opacity: 0.8,
   },
 });
   

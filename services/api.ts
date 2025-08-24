@@ -1,8 +1,8 @@
 // FlashBack Labs API Service
 const API_BASE_URL = 'https://flashback.inc:9000';
 
-// You'll need to provide this refresh token
-const REFRESH_TOKEN = 'your_refresh_token_here'; // TODO: Replace with actual refresh token
+// Refresh token from environment
+const REFRESH_TOKEN = 'a02054c6-48d2-4fa1-90d1-74cef9020457503efd5b-bfd3-43a3-8500-1e9543aed062';
 
 interface SendOtpRequest {
   phoneNumber: string;
@@ -36,12 +36,17 @@ interface UploadSelfieResponse {
   // Add other response fields as needed
 }
 
+
 class FlashBackApiService {
   private getHeaders(contentType: string = 'application/json', authToken?: string): HeadersInit {
-    const headers: HeadersInit = {
-      'Content-Type': contentType,
-      'Cookie': `refreshToken=${REFRESH_TOKEN}`,
-    };
+    const headers: HeadersInit = {};
+    
+    // Only set Content-Type for non-multipart requests
+    if (contentType !== 'multipart/form-data') {
+      headers['Content-Type'] = contentType;
+    }
+    
+    headers['Cookie'] = `refreshToken=${REFRESH_TOKEN}`;
     
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
@@ -132,7 +137,14 @@ class FlashBackApiService {
 
     return this.makeRequest<UploadSelfieResponse>('/api/mobile/uploadUserPortrait', 'POST', formData, 'multipart/form-data', authToken);
   }
+
 }
 
 export const flashBackApiService = new FlashBackApiService();
-export type { SendOtpRequest, SendOtpResponse, VerifyOtpRequest, VerifyOtpResponse, UploadSelfieResponse };
+export type { 
+  SendOtpRequest, 
+  SendOtpResponse, 
+  VerifyOtpRequest, 
+  VerifyOtpResponse, 
+  UploadSelfieResponse
+};

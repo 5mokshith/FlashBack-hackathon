@@ -20,8 +20,11 @@ export default function OtpVerification() {
   const { phoneNumber } = useLocalSearchParams<{ phoneNumber: string }>();
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isVerified, setIsVerified] = useState(false);
   const otpInputRef = useRef<any>(null);
 
   useEffect(() => {
@@ -62,6 +65,12 @@ export default function OtpVerification() {
       return;
     }
 
+    // Prevent multiple submissions
+    if (isVerifying || isVerified) {
+      return;
+    }
+
+    setIsVerifying(true);
     setIsLoading(true);
     setError('');
     setSuccess('');
@@ -70,6 +79,7 @@ export default function OtpVerification() {
       const response = await flashBackApiService.verifyOtp(phoneNumber!, otp);
       
       if (response.success) {
+        setIsVerified(true);
         setSuccess('OTP verified successfully!');
         
         // Store the auth token if provided
@@ -79,9 +89,9 @@ export default function OtpVerification() {
           await SecureStorage.storeUserPhone(phoneNumber!);
         }
         
-        // Navigate to selfie capture with liveness detection after successful verification
+        // Navigate to selfie capture after successful verification
         setTimeout(() => {
-          router.push('./SelfieCapture'); // Navigate directly to enhanced liveness detection
+          router.push('/SelfieCapture'); // Navigate directly to selfie capture
         }, 1500);
       } else {
         setError(response.message || 'Failed to verify OTP');
@@ -106,11 +116,18 @@ export default function OtpVerification() {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+      setIsVerifying(false);
     }
   };
 
   // Handle resend OTP
   const handleResendOtp = async () => {
+    // Prevent multiple resend attempts
+    if (isResending || isVerified) {
+      return;
+    }
+
+    setIsResending(true);
     setIsLoading(true);
     setError('');
     setSuccess('');
@@ -120,6 +137,11 @@ export default function OtpVerification() {
       
       if (response.success) {
         setSuccess('OTP resent successfully!');
+        // Clear the current OTP input when resending
+        setOtp('');
+        if (otpInputRef.current) {
+          otpInputRef.current.focus();
+        }
       } else {
         setError(response.message || 'Failed to resend OTP');
       }
@@ -128,6 +150,7 @@ export default function OtpVerification() {
       setError(err.message || 'Failed to resend OTP. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsResending(false);
     }
   };
 
@@ -183,7 +206,7 @@ export default function OtpVerification() {
                     style={styles.textInput}
                     mode="outlined"
                     left={<TextInput.Icon icon="lock" color="#fbbf24" />}
-                    disabled={isLoading}
+                    disabled={isLoading || isVerified}
                     maxLength={6}
                     outlineStyle={styles.inputOutline}
                     activeOutlineColor="#fbbf24"
@@ -200,7 +223,7 @@ export default function OtpVerification() {
                     <Button
                       mode="outlined"
                       onPress={handleBackToPhone}
-                      disabled={isLoading}
+                      disabled={isLoading || isVerified}
                       style={[styles.button, styles.backButton]}
                       contentStyle={styles.buttonContent}
                       textColor="#6b7280"
@@ -211,24 +234,24 @@ export default function OtpVerification() {
                     <Button
                       mode="contained"
                       onPress={handleVerifyOtp}
-                      loading={isLoading}
-                      disabled={isLoading || !otp.trim()}
+                      loading={isVerifying}
+                      disabled={isVerifying || isVerified || !otp.trim() || otp.length !== 6}
                       style={[styles.button, styles.verifyButton]}
                       contentStyle={styles.buttonContent}
-                      buttonColor="#fbbf24"
+                      buttonColor={isVerified ? "#10b981" : "#fbbf24"}
                       textColor="#111827"
                     >
-                      {isLoading ? 'Verifying...' : 'Verify'}
+                      {isVerifying ? 'Verifying...' : isVerified ? 'Verified ✓' : 'Verify'}
                     </Button>
                   </View>
                   
                   <TouchableOpacity 
                     onPress={handleResendOtp}
-                    disabled={isLoading}
-                    style={styles.resendContainer}
+                    disabled={isResending || isVerified}
+                    style={[styles.resendContainer, (isResending || isVerified) && styles.resendDisabled]}
                   >
-                    <Text style={styles.resendText}>
-                      Didn't receive code? Resend
+                    <Text style={[styles.resendText, (isResending || isVerified) && styles.resendTextDisabled]}>
+                      {isResending ? 'Resending...' : isVerified ? 'OTP Verified' : "Didn't receive code? Resend"}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -382,6 +405,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#fcd34d',
     fontWeight: '500',
+  },
+  resendTextDisabled: {
+    color: '#9ca3af',
+  },
+  resendDisabled: {
+    opacity: 0.5,
   },
   errorContainer: {
     marginTop: 12,

@@ -1,10 +1,7 @@
 /**
- * Enhanced Liveness Detection System
- * Based on Expo FaceDetector implementation with improved accuracy
- * Reference: https://osamaqarem.com/blog/intro-to-liveness-detection-with-react-native
+ * Face-based Liveness Detection System
+ * Based on Expo FaceDetector implementation from https://osamaqarem.com/blog/intro-to-liveness-detection-with-react-native
  */
-
-import * as Device from 'expo-device';
 
 export interface FaceDetection {
   rollAngle: number;
@@ -33,86 +30,58 @@ export interface DetectionConfig {
   maxAngle?: number;
   minAngle?: number;
   minDiff?: number;
-  duration?: number; // Minimum duration to hold the action
 }
 
 export interface LivenessState {
   faceDetected: 'yes' | 'no';
   faceTooBig: 'yes' | 'no';
-  faceTooSmall: 'yes' | 'no';
   detectionsList: DetectionActions[];
   currentDetectionIndex: number;
   progressFill: number;
   processComplete: boolean;
-  currentActionStartTime: number;
-  actionHeld: boolean;
 }
 
 export interface LivenessAction {
-  type: 'FACE_DETECTED' | 'FACE_TOO_BIG' | 'FACE_TOO_SMALL' | 'NEXT_DETECTION' | 'RESET_PROCESS' | 'ACTION_START' | 'ACTION_HELD';
+  type: 'FACE_DETECTED' | 'FACE_TOO_BIG' | 'NEXT_DETECTION' | 'RESET_PROCESS';
   payload: any;
 }
 
-// Enhanced detection configurations with better thresholds
+// Detection configurations with thresholds
 export const detections: Record<DetectionActions, DetectionConfig> = {
-  BLINK: { 
-    instruction: 'Blink both eyes naturally', 
-    minProbability: 0.2,
-    duration: 500 // Hold blink for 500ms
-  },
-  TURN_HEAD_LEFT: { 
-    instruction: 'Turn your head to the left', 
-    maxAngle: -20,
-    duration: 1000 // Hold position for 1 second
-  },
-  TURN_HEAD_RIGHT: { 
-    instruction: 'Turn your head to the right', 
-    minAngle: 20,
-    duration: 1000 // Hold position for 1 second
-  },
-  NOD: { 
-    instruction: 'Nod your head up and down', 
-    minDiff: 2.0,
-    duration: 800 // Hold nod for 800ms
-  },
-  SMILE: { 
-    instruction: 'Smile naturally', 
-    minProbability: 0.6,
-    duration: 1000 // Hold smile for 1 second
-  },
+  BLINK: { instruction: 'Blink both eyes', minProbability: 0.3 },
+  TURN_HEAD_LEFT: { instruction: 'Turn head left', maxAngle: -15 },
+  TURN_HEAD_RIGHT: { instruction: 'Turn head right', minAngle: 15 },
+  NOD: { instruction: 'Nod', minDiff: 1.5 },
+  SMILE: { instruction: 'Smile', minProbability: 0.7 },
 };
 
 // Instructions text
 export const instructionsText = {
-  initialPrompt: 'Position your face in the circle and look straight ahead',
+  initialPrompt: 'Position your face in the circle',
   performActions: 'Keep the device still and perform the following actions:',
-  tooClose: "You're too close. Hold the device further away.",
-  tooFar: "You're too far. Move closer to the device.",
+  tooClose: "You're too close. Hold the device further.",
   noFace: 'No face detected. Please position your face in the circle.',
   multipleFaces: 'Multiple faces detected. Please ensure only one face is visible.',
-  actionInProgress: 'Hold this position...',
-  actionComplete: 'Great! Action completed.',
 };
 
-// Detection actions list - randomized for better security
-export const getRandomizedDetectionsList = (): DetectionActions[] => {
-  const allActions: DetectionActions[] = ['BLINK', 'TURN_HEAD_LEFT', 'TURN_HEAD_RIGHT', 'NOD', 'SMILE'];
-  const shuffled = [...allActions].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 4); // Use 4 random actions
-};
+// Detection actions list
+export const detectionsList: DetectionActions[] = [
+  'BLINK',
+  'TURN_HEAD_LEFT', 
+  'TURN_HEAD_RIGHT',
+  'NOD',
+  'SMILE',
+];
 
 // Initial state
-export const getInitialState = (): LivenessState => ({
+export const initialState: LivenessState = {
   faceDetected: 'no',
   faceTooBig: 'no',
-  faceTooSmall: 'no',
-  detectionsList: getRandomizedDetectionsList(),
+  detectionsList,
   currentDetectionIndex: 0,
   progressFill: 0,
   processComplete: false,
-  currentActionStartTime: 0,
-  actionHeld: false,
-});
+};
 
 /**
  * Check if one rectangle contains another
@@ -148,25 +117,6 @@ export function detectionReducer(state: LivenessState, action: LivenessAction): 
         faceTooBig: action.payload ? 'yes' : 'no',
       };
 
-    case 'FACE_TOO_SMALL':
-      return {
-        ...state,
-        faceTooSmall: action.payload ? 'yes' : 'no',
-      };
-
-    case 'ACTION_START':
-      return {
-        ...state,
-        currentActionStartTime: action.payload,
-        actionHeld: false,
-      };
-
-    case 'ACTION_HELD':
-      return {
-        ...state,
-        actionHeld: action.payload,
-      };
-
     case 'NEXT_DETECTION':
       const nextIndex = state.currentDetectionIndex + 1;
       const isComplete = nextIndex >= state.detectionsList.length;
@@ -176,13 +126,11 @@ export function detectionReducer(state: LivenessState, action: LivenessAction): 
         currentDetectionIndex: nextIndex,
         progressFill: (nextIndex / state.detectionsList.length) * 100,
         processComplete: isComplete,
-        currentActionStartTime: 0,
-        actionHeld: false,
       };
 
     case 'RESET_PROCESS':
       return {
-        ...getInitialState(),
+        ...initialState,
       };
 
     default:
@@ -191,27 +139,24 @@ export function detectionReducer(state: LivenessState, action: LivenessAction): 
 }
 
 /**
- * Enhanced Face-based Liveness Detector Class
+ * Face-based Liveness Detector Class
  */
-export class EnhancedLivenessDetector {
+export class FaceBasedLivenessDetector {
   private rollAngles: number[] = [];
-  private yawAngles: number[] = [];
-  private state: LivenessState = getInitialState();
+  private state: LivenessState = initialState;
   private dispatch: (action: LivenessAction) => void;
-  private actionHoldTimer: NodeJS.Timeout | null = null;
 
   constructor(dispatch: (action: LivenessAction) => void) {
     this.dispatch = dispatch;
   }
 
   /**
-   * Process face detection results with enhanced validation
+   * Process face detection results
    */
   processFaceDetection(faces: FaceDetection[], previewRect: Rect): {
     canProcess: boolean;
     instruction: string;
     action?: string;
-    actionProgress?: number;
   } {
     // Check if no faces detected
     if (faces.length === 0) {
@@ -251,16 +196,12 @@ export class EnhancedLivenessDetector {
       };
     }
 
-    // Check face size constraints
+    // Check if face is too big (user too close)
     const faceArea = faceRect.width * faceRect.height;
     const previewArea = previewRect.width * previewRect.height;
-    const faceRatio = faceArea / previewArea;
-    
-    const faceTooBig = faceRatio > 0.7; // Face takes up more than 70% of preview
-    const faceTooSmall = faceRatio < 0.2; // Face takes up less than 20% of preview
+    const faceTooBig = faceArea > previewArea * 0.8; // Face takes up more than 80% of preview
     
     this.dispatch({ type: 'FACE_TOO_BIG', payload: faceTooBig });
-    this.dispatch({ type: 'FACE_TOO_SMALL', payload: faceTooSmall });
 
     if (faceTooBig) {
       return {
@@ -269,31 +210,22 @@ export class EnhancedLivenessDetector {
       };
     }
 
-    if (faceTooSmall) {
-      return {
-        canProcess: false,
-        instruction: instructionsText.tooFar,
-      };
-    }
-
     // Face is properly positioned, process gestures
     return this.processGestures(face);
   }
 
   /**
-   * Process gesture detection with duration tracking
+   * Process gesture detection
    */
   private processGestures(face: FaceDetection): {
     canProcess: boolean;
     instruction: string;
     action: string;
-    actionProgress?: number;
   } {
     const currentAction = this.state.detectionsList[this.state.currentDetectionIndex];
     const detection = detections[currentAction];
 
     let gestureDetected = false;
-    let actionProgress = 0;
 
     switch (currentAction) {
       case 'BLINK':
@@ -319,74 +251,40 @@ export class EnhancedLivenessDetector {
         break;
     }
 
-    // Handle action duration tracking
     if (gestureDetected) {
-      if (this.state.currentActionStartTime === 0) {
-        // Start timing the action
-        this.dispatch({ type: 'ACTION_START', payload: Date.now() });
-      } else {
-        // Calculate how long the action has been held
-        const heldTime = Date.now() - this.state.currentActionStartTime;
-        actionProgress = Math.min((heldTime / detection.duration!) * 100, 100);
-
-        if (heldTime >= detection.duration!) {
-          // Action completed, move to next
-          this.dispatch({ type: 'NEXT_DETECTION', payload: null });
-          return {
-            canProcess: true,
-            instruction: instructionsText.actionComplete,
-            action: detection.instruction,
-            actionProgress: 100,
-          };
-        }
-      }
-    } else {
-      // Reset action timing if gesture is not detected
-      if (this.state.currentActionStartTime > 0) {
-        this.dispatch({ type: 'ACTION_START', payload: 0 });
-      }
+      this.dispatch({ type: 'NEXT_DETECTION', payload: null });
     }
 
     return {
       canProcess: true,
-      instruction: this.state.currentActionStartTime > 0 ? instructionsText.actionInProgress : instructionsText.performActions,
+      instruction: instructionsText.performActions,
       action: detection.instruction,
-      actionProgress,
     };
   }
 
   /**
-   * Enhanced nod gesture processing with roll angle normalization
+   * Process nod gesture with roll angle normalization
    */
   private processNodGesture(rollAngle: number): boolean {
     // Collect roll angle data
     this.rollAngles.push(rollAngle);
 
-    // Keep only recent roll angles (last 15 frames)
-    if (this.rollAngles.length > 15) {
+    // Don't keep more than 10 roll angles (10 detection frames)
+    if (this.rollAngles.length > 10) {
       this.rollAngles.shift();
     }
 
     // If not enough roll angle data, don't process
     if (this.rollAngles.length < 10) return false;
 
-    // Calculate variance in roll angles to detect nodding motion
-    const mean = this.rollAngles.reduce((sum, angle) => sum + Math.abs(angle), 0) / this.rollAngles.length;
-    const variance = this.rollAngles.reduce((sum, angle) => sum + Math.pow(Math.abs(angle) - mean, 2), 0) / this.rollAngles.length;
+    // Calculate average from collected data, except current angle
+    const rollAnglesExceptCurrent = [...this.rollAngles].slice(0, this.rollAngles.length - 1);
+    const rollAnglesSum = rollAnglesExceptCurrent.reduce((prev, curr) => prev + Math.abs(curr), 0);
+    const avgAngle = rollAnglesSum / rollAnglesExceptCurrent.length;
 
-    // If variance is above threshold, it indicates nodding motion
-    return variance >= detections.NOD.minDiff!;
-  }
-
-  /**
-   * Get device information for liveness data
-   */
-  getDeviceInfo() {
-    return {
-      platform: Device.osName || 'unknown',
-      version: Device.osVersion || 'unknown',
-      model: Device.modelName || 'unknown',
-    };
+    // If the difference between current angle and average is above threshold, pass
+    const diff = Math.abs(avgAngle - Math.abs(rollAngle));
+    return diff >= detections.NOD.minDiff!;
   }
 
   /**
@@ -401,14 +299,8 @@ export class EnhancedLivenessDetector {
    */
   reset(): void {
     this.rollAngles = [];
-    this.yawAngles = [];
-    this.state = getInitialState();
+    this.state = initialState;
     this.dispatch({ type: 'RESET_PROCESS', payload: null });
-    
-    if (this.actionHoldTimer) {
-      clearTimeout(this.actionHoldTimer);
-      this.actionHoldTimer = null;
-    }
   }
 
   /**
@@ -423,22 +315,5 @@ export class EnhancedLivenessDetector {
    */
   isComplete(): boolean {
     return this.state.processComplete;
-  }
-
-  /**
-   * Get current detection data for API submission
-   */
-  getLivenessData(): {
-    actions: string[];
-    timestamps: number[];
-    faceDetections: any[];
-    deviceInfo: any;
-  } {
-    return {
-      actions: this.state.detectionsList,
-      timestamps: [this.state.currentActionStartTime], // Simplified for demo
-      faceDetections: [], // Would contain actual face detection data
-      deviceInfo: this.getDeviceInfo(),
-    };
   }
 }
