@@ -38,7 +38,7 @@ interface UploadSelfieResponse {
 
 
 class FlashBackApiService {
-  private getHeaders(contentType: string = 'application/json', authToken?: string): HeadersInit {
+  private async getHeaders(contentType: string = 'application/json', authToken?: string): Promise<HeadersInit> {
     const headers: HeadersInit = {};
     
     // Only set Content-Type for non-multipart requests
@@ -46,7 +46,19 @@ class FlashBackApiService {
       headers['Content-Type'] = contentType;
     }
     
-    headers['Cookie'] = `refreshToken=${REFRESH_TOKEN}`;
+    // Try to get stored refresh token, fallback to hardcoded one
+    let refreshToken = REFRESH_TOKEN;
+    try {
+      const { SecureStorage } = await import('../utils/storage');
+      const storedRefreshToken = await SecureStorage.getRefreshToken();
+      if (storedRefreshToken) {
+        refreshToken = storedRefreshToken;
+      }
+    } catch (error) {
+      console.log('Using fallback refresh token');
+    }
+    
+    headers['Cookie'] = `refreshToken=${refreshToken}`;
     
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
@@ -64,7 +76,7 @@ class FlashBackApiService {
   ): Promise<T> {
     try {
       const url = `${API_BASE_URL}${endpoint}`;
-      const headers = this.getHeaders(contentType, authToken);
+      const headers = await this.getHeaders(contentType, authToken);
       
       const requestOptions: RequestInit = {
         method,
@@ -80,7 +92,12 @@ class FlashBackApiService {
       }
 
       console.log(`Making ${method} request to: ${url}`);
-      console.log('Request body:', body);
+      console.log('Request headers:', headers);
+      if (contentType === 'application/json') {
+        console.log('Request body:', body);
+      } else {
+        console.log('Request body type:', typeof body);
+      }
 
       const response = await fetch(url, requestOptions);
       const responseText = await response.text();
@@ -106,8 +123,18 @@ class FlashBackApiService {
       }
 
       return data as T;
-    } catch (error) {
+    } catch (error: any) {
       console.error('API request failed:', error);
+      
+      // Handle specific network errors
+      if (error.message?.includes('Network request failed')) {
+        throw new Error('Network connection failed. Please check your internet connection and try again.');
+      } else if (error.message?.includes('timeout')) {
+        throw new Error('Request timed out. Please try again.');
+      } else if (error.message?.includes('CORS')) {
+        throw new Error('Server configuration issue. Please contact support.');
+      }
+      
       throw error;
     }
   }
@@ -132,8 +159,19 @@ class FlashBackApiService {
 
   async uploadSelfie(imageFile: File | Blob, username: string, authToken: string): Promise<UploadSelfieResponse> {
     const formData = new FormData();
-    formData.append('image', imageFile);
+    
+    // For React Native, we need to handle the file differently
+    if (imageFile instanceof Blob) {
+      formData.append('image', imageFile as any, 'selfie.jpg');
+    } else {
+      formData.append('image', imageFile);
+    }
+    
     formData.append('username', username);
+
+    console.log('FormData created with username:', username);
+    console.log('Image file type:', typeof imageFile);
+    console.log('Image file size:', imageFile.size);
 
     return this.makeRequest<UploadSelfieResponse>('/api/mobile/uploadUserPortrait', 'POST', formData, 'multipart/form-data', authToken);
   }

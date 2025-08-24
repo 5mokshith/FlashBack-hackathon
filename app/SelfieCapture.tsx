@@ -113,29 +113,45 @@ export default function SelfieCapture() {
       setUploadProgress(25);
       setSuccessMessage('📤 Preparing image for upload...');
 
-      // Create a blob from the image URI with validation
-      const response = await fetch(capturedImage);
-      if (!response.ok) {
-        throw new Error('Failed to process captured image');
-      }
-      
-      const blob = await response.blob();
-      
-      // Validate image size (max 5MB)
-      if (blob.size > 5 * 1024 * 1024) {
-        setError('❌ Image too large (max 5MB). Please retake the photo.');
-        return;
-      }
-      
       setUploadProgress(50);
       setSuccessMessage('☁️ Uploading selfie...');
       
-      // Upload selfie using the API
-      const uploadResponse = await flashBackApiService.uploadSelfie(
-        blob,
-        phoneNumber,
-        authToken
-      );
+      // Create FormData directly for React Native
+      const formData = new FormData();
+      formData.append('image', {
+        uri: capturedImage,
+        type: 'image/jpeg',
+        name: 'selfie.jpg',
+      } as any);
+      formData.append('username', phoneNumber);
+
+      console.log('Uploading with FormData for phone:', phoneNumber);
+      
+      // Make direct API call with proper React Native FormData
+      const uploadResponse = await fetch('https://flashback.inc:9000/api/mobile/uploadUserPortrait', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Cookie': `refreshToken=${await SecureStorage.getRefreshToken() || 'a02054c6-48d2-4fa1-90d1-74cef9020457503efd5b-bfd3-43a3-8500-1e9543aed062'}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const responseText = await uploadResponse.text();
+      console.log('Upload response status:', uploadResponse.status);
+      console.log('Upload response text:', responseText);
+
+      let uploadResult;
+      try {
+        uploadResult = JSON.parse(responseText);
+      } catch {
+        uploadResult = { success: false, message: responseText };
+      }
+
+      if (!uploadResponse.ok) {
+        throw new Error(uploadResult.message || `HTTP ${uploadResponse.status}: ${responseText}`);
+      }
 
       setUploadProgress(75);
 
@@ -475,12 +491,13 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     position: 'absolute',
-    bottom: 20,
+    top: 120,
     left: 20,
     right: 20,
     backgroundColor: 'rgba(239, 68, 68, 0.9)',
-    padding: 15,
+    padding: 12,
     borderRadius: 8,
+    zIndex: 1000,
   },
   errorText: {
     color: 'white',

@@ -83,10 +83,18 @@ export default function OtpVerification() {
         setSuccess('OTP verified successfully!');
         
         // Store the auth token if provided
-        if (response.token) {
-          console.log('Auth token received:', response.token);
-          await SecureStorage.storeAuthToken(response.token);
+        const authToken = response.accessToken || response.token;
+        if (authToken) {
+          console.log('Auth token received:', authToken);
+          await SecureStorage.storeAuthToken(authToken);
           await SecureStorage.storeUserPhone(phoneNumber!);
+          
+          // Store refresh token if provided
+          if (response.refreshToken) {
+            await SecureStorage.storeRefreshToken(response.refreshToken);
+          }
+        } else {
+          console.warn('No auth token received in response');
         }
         
         // Navigate to selfie capture after successful verification
