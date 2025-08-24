@@ -1,5 +1,5 @@
 // FlashBack Labs API Service
-const API_BASE_URL = 'https://flashback.inc:9000/api/mobile';
+const API_BASE_URL = 'https://flashback.inc:9000';
 
 // You'll need to provide this refresh token
 const REFRESH_TOKEN = 'your_refresh_token_here'; // TODO: Replace with actual refresh token
@@ -112,7 +112,7 @@ class FlashBackApiService {
       phoneNumber,
     };
 
-    return this.makeRequest<SendOtpResponse>('/sendOTP', 'POST', requestBody);
+    return this.makeRequest<SendOtpResponse>('/api/mobile/sendOTP', 'POST', requestBody);
   }
 
   async verifyOtp(phoneNumber: string, otp: string): Promise<VerifyOtpResponse> {
@@ -122,7 +122,7 @@ class FlashBackApiService {
       login_platform: 'MobileApp',
     };
 
-    return this.makeRequest<VerifyOtpResponse>('/verifyOTP', 'POST', requestBody);
+    return this.makeRequest<VerifyOtpResponse>('/api/mobile/verifyOTP', 'POST', requestBody);
   }
 
   async uploadSelfie(imageFile: File | Blob, username: string, authToken: string): Promise<UploadSelfieResponse> {
@@ -130,7 +130,7 @@ class FlashBackApiService {
     formData.append('image', imageFile);
     formData.append('username', username);
 
-    return this.makeRequest<UploadSelfieResponse>('/uploadUserPortrait', 'POST', formData, 'multipart/form-data', authToken);
+    return this.makeRequest<UploadSelfieResponse>('/api/mobile/uploadUserPortrait', 'POST', formData, 'multipart/form-data', authToken);
   }
 }
 
